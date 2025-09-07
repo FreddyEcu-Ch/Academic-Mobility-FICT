@@ -167,7 +167,12 @@ DEFAULT_FILE = (
 logo_espol = Image.open("Resources/ESPOL_Negro.png")
 st.sidebar.image(logo_espol)
 
-# Carga con fallback al cargador de archivos
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] [data-testid="stFileUploader"] { display: none; }
+</style>
+""", unsafe_allow_html=True)
+
 uploaded = st.sidebar.file_uploader("Cargar Excel (xlsx)", type=["xlsx"])
 
 if uploaded is not None:
