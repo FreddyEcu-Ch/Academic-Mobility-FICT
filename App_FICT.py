@@ -20,7 +20,9 @@ st.image(logo_fict)
 
 st.title("🎓 Movilidad Académica FICT — 2025")
 st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
-st.markdown("**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)")
+st.markdown(
+    "**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)"
+)
 
 
 # ------------------------- Helpers -------------------------
@@ -134,16 +136,18 @@ def parse_countries(xls):
     return result
 
 
-def bar(df, x, y, title, color=None, sort='-y'):
+def bar(df, x, y, title, color=None, sort="-y"):
     enc = {
         "x": alt.X(f"{x}:N", sort=sort, title=""),
         "y": alt.Y(f"{y}:Q", title="Total"),
-        "tooltip": [f"{x}:N", f"{y}:Q"]
+        "tooltip": [f"{x}:N", f"{y}:Q"],
     }
     if color:
-        enc["color"] = alt.Color(f"{color}:N",
-                                 legend=alt.Legend(title=""),
-                                 scale=alt.Scale(scheme="tableau10"))
+        enc["color"] = alt.Color(
+            f"{color}:N",
+            legend=alt.Legend(title=""),
+            scale=alt.Scale(scheme="tableau10"),
+        )
     return alt.Chart(df).mark_bar().encode(**enc).properties(height=330, title=title)
 
 
@@ -199,12 +203,23 @@ with tabs[0]:
         if not any(block in comp_dict[y] for y in ["2023", "2024", "2025"]):
             continue
         df_blk = pd.concat(
-            [tidy_from_block(comp_dict, y, block) for y in ["2023", "2024", "2025"] if
-             block in comp_dict[y]], ignore_index=True)
+            [
+                tidy_from_block(comp_dict, y, block)
+                for y in ["2023", "2024", "2025"]
+                if block in comp_dict[y]
+            ],
+            ignore_index=True,
+        )
         st.altair_chart(
-            bar(df_blk, "Categoría", "Valor", f"{block} — Comparativa 2023–2025",
-                color="Año"),
-            use_container_width=True)
+            bar(
+                df_blk,
+                "Categoría",
+                "Valor",
+                f"{block} — Comparativa 2023–2025",
+                color="Año",
+            ),
+            use_container_width=True,
+        )
 
 with tabs[1]:
     st.subheader(f"Tipo de movilidad — {year}")
@@ -220,9 +235,14 @@ with tabs[1]:
             int(df_m.loc[df_m["Categoría"] == "Movilidad Saliente", "Valor"].sum()),
         )
         st.altair_chart(
-            bar(df_m, "Categoría", "Valor", f"Tipo de movilidad ({year})",
-                color="Categoría"),
-            use_container_width=True
+            bar(
+                df_m,
+                "Categoría",
+                "Valor",
+                f"Tipo de movilidad ({year})",
+                color="Categoría",
+            ),
+            use_container_width=True,
         )
 
     else:
@@ -241,9 +261,14 @@ with tabs[2]:
         col1.metric("Carreras con >0", int((df_carr["Valor"] > 0).sum()))
         col2.metric("Total", int(df_carr["Valor"].sum()))
         st.altair_chart(
-            bar(df_carr.head(topn), "Categoría", "Valor",
-                f"Carreras y Programas ({year})", color="Categoría"),
-            use_container_width=True
+            bar(
+                df_carr.head(topn),
+                "Categoría",
+                "Valor",
+                f"Carreras y Programas ({year})",
+                color="Categoría",
+            ),
+            use_container_width=True,
         )
 
     else:
@@ -270,7 +295,7 @@ with tabs[3]:
         )
         st.altair_chart(
             bar(df_mod, "Categoría", "Valor", f"Modalidad ({year})", color="Categoría"),
-            use_container_width=True
+            use_container_width=True,
         )
 
     else:
@@ -307,9 +332,14 @@ with tabs[4]:
             ),
         )
         st.altair_chart(
-            bar(df_act, "Categoría", "Valor", f"Tipo de Actividad ({year})",
-                color="Categoría"),
-            use_container_width=True
+            bar(
+                df_act,
+                "Categoría",
+                "Valor",
+                f"Tipo de Actividad ({year})",
+                color="Categoría",
+            ),
+            use_container_width=True,
         )
 
     else:
@@ -318,41 +348,75 @@ with tabs[4]:
 with tabs[5]:
     st.subheader(f"Países — {year}")
 
-    df_pais = countries_dict.get(year, pd.DataFrame(columns=["País","Tipo","Modalidad","Casos"]))
+    df_pais = countries_dict.get(
+        year, pd.DataFrame(columns=["País", "Tipo", "Modalidad", "Casos"])
+    )
     if df_pais.empty:
         st.info("No se encontraron datos de países en el Excel para este año.")
     else:
         # --- Filtros
         tipo = st.radio("Tipo", ["Entrante", "Saliente"], horizontal=True)
-        map_type = st.radio("Tipo de mapa", ["Coroplético", "Burbujas"], horizontal=True)
+        map_type = st.radio(
+            "Tipo de mapa", ["Coroplético", "Burbujas"], horizontal=True
+        )
 
         # --- Prepara datos
         df_t = df_pais[df_pais["Tipo"] == tipo].copy()
 
         # Quita filas de totales si existieran
-        df_t = df_t[~df_t["País"].str.strip().str.lower().isin(["total", "totales", "subtotal"])]
+        df_t = df_t[
+            ~df_t["País"].str.strip().str.lower().isin(["total", "totales", "subtotal"])
+        ]
 
         # Asegura numérico
         df_t["Casos"] = pd.to_numeric(df_t["Casos"], errors="coerce").fillna(0)
 
         # Map de nombres en ES -> EN (agrega/ajusta si te faltan países)
         name_map = {
-            "España": "Spain", "Italia": "Italy", "Colombia": "Colombia", "Rusia": "Russia",
-            "Ecuador": "Ecuador", "Perú": "Peru", "Chile": "Chile", "Argentina": "Argentina",
-            "México": "Mexico", "Brasil": "Brazil", "Estados Unidos": "United States",
-            "Reino Unido": "United Kingdom", "Países Bajos": "Netherlands",
-            "Corea del Sur": "South Korea", "Alemania": "Germany", "Francia": "France",
-            "Suiza": "Switzerland", "Austria": "Austria", "Suecia": "Sweden", "Noruega": "Norway",
-            "Finlandia": "Finland", "Dinamarca": "Denmark", "Polonia": "Poland", "Portugal": "Portugal",
-            "Irlanda": "Ireland", "República Checa": "Czechia", "Hungría": "Hungary",
-            "Grecia": "Greece", "Turquía": "Turkey", "Japón": "Japan", "China": "China",
-            "India": "India", "Australia": "Australia", "Nueva Zelanda": "New Zealand",
-            "Sudáfrica": "South Africa", "Marruecos": "Morocco"
+            "España": "Spain",
+            "Italia": "Italy",
+            "Colombia": "Colombia",
+            "Rusia": "Russia",
+            "Ecuador": "Ecuador",
+            "Perú": "Peru",
+            "Chile": "Chile",
+            "Argentina": "Argentina",
+            "México": "Mexico",
+            "Brasil": "Brazil",
+            "Estados Unidos": "United States",
+            "Reino Unido": "United Kingdom",
+            "Países Bajos": "Netherlands",
+            "Corea del Sur": "South Korea",
+            "Alemania": "Germany",
+            "Francia": "France",
+            "Suiza": "Switzerland",
+            "Austria": "Austria",
+            "Suecia": "Sweden",
+            "Noruega": "Norway",
+            "Finlandia": "Finland",
+            "Dinamarca": "Denmark",
+            "Polonia": "Poland",
+            "Portugal": "Portugal",
+            "Irlanda": "Ireland",
+            "República Checa": "Czechia",
+            "Hungría": "Hungary",
+            "Grecia": "Greece",
+            "Turquía": "Turkey",
+            "Japón": "Japan",
+            "China": "China",
+            "India": "India",
+            "Australia": "Australia",
+            "Nueva Zelanda": "New Zealand",
+            "Sudáfrica": "South Africa",
+            "Marruecos": "Morocco",
         }
         df_t["country_en"] = df_t["País"].replace(name_map)
         # Si no está en el diccionario, deja el nombre original
-        df_t["country_en"] = np.where(df_t["country_en"].isna() | (df_t["country_en"].str.strip() == ""),
-                                      df_t["País"], df_t["country_en"])
+        df_t["country_en"] = np.where(
+            df_t["country_en"].isna() | (df_t["country_en"].str.strip() == ""),
+            df_t["País"],
+            df_t["country_en"],
+        )
 
         # KPIs
         c1, c2 = st.columns(2)
@@ -373,7 +437,7 @@ with tabs[5]:
                 projection="natural earth",
                 title=f"{tipo} — {year}",
                 hover_name="country_en",
-                labels={"Casos": "Casos"}
+                labels={"Casos": "Casos"},
             )
             fig.update_geos(
                 showcountries=True,  # draw country borders
@@ -381,7 +445,7 @@ with tabs[5]:
                 showframe=False,  # no outer frame
                 countrycolor="black",  # optional styling
                 countrywidth=0.5,
-                coastlinecolor="gray"
+                coastlinecolor="gray",
             )
 
         else:  # Burbujas
@@ -397,26 +461,32 @@ with tabs[5]:
                 projection="natural earth",
                 title=f"{tipo} — {year}",
                 hover_name="country_en",
-                labels={"Casos": "Casos"}
+                labels={"Casos": "Casos"},
             )
-            fig.update_traces(marker_line_color="black", marker_line_width=0.3,
-                              opacity=0.85)
+            fig.update_traces(
+                marker_line_color="black", marker_line_width=0.3, opacity=0.85
+            )
             fig.update_geos(
                 showcountries=True,
                 showcoastlines=True,
                 showframe=False,
                 countrycolor="black",
                 countrywidth=0.5,
-                coastlinecolor="gray"
+                coastlinecolor="gray",
             )
 
         st.plotly_chart(fig, use_container_width=True)
 
         # Ranking por país (barras coloreadas por país)
         st.altair_chart(
-            bar(df_geo.sort_values("Casos", ascending=False),
-                "country_en", "Casos", f"Ranking de países — {tipo} ({year})", color="country_en"),
-            use_container_width=True
+            bar(
+                df_geo.sort_values("Casos", ascending=False),
+                "country_en",
+                "Casos",
+                f"Ranking de países — {tipo} ({year})",
+                color="country_en",
+            ),
+            use_container_width=True,
         )
 
 
