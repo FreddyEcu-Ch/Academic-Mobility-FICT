@@ -4,8 +4,12 @@ import pandas as pd
 import altair as alt
 from pathlib import Path
 
-st.set_page_config(page_title="Movilidad Académica FICT 2023–2025",
-                   page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Movilidad Académica FICT 2023–2025",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.title("🎓 Movilidad Académica FICT — 2025")
 st.caption("Fuente: Coordinación de Movilidad Académica FICT.")
@@ -18,14 +22,14 @@ def load_excel(src):
 
 def parse_comparativa(xls: pd.ExcelFile):
     df = pd.read_excel(xls, sheet_name="Comparativa 2023 - 2025")
-    blocks = [(3,4,5,"2023"), (8,9,10,"2024"), (13,14,15,"2025")]
-    out = {lab:{} for *_, lab in blocks}
+    blocks = [(3, 4, 5, "2023"), (8, 9, 10, "2024"), (13, 14, 15, "2025")]
+    out = {lab: {} for *_, lab in blocks}
     for c_label, c_name, c_val, lab in blocks:
         current_block = None
         for _, row in df.iterrows():
             label = row.iloc[c_label]
-            name  = row.iloc[c_name]
-            val   = row.iloc[c_val]
+            name = row.iloc[c_name]
+            val = row.iloc[c_val]
             if isinstance(label, str) and label.strip():
                 current_block = label.strip()
                 out[lab].setdefault(current_block, {})
@@ -47,7 +51,9 @@ def parse_comparativa(xls: pd.ExcelFile):
 
 def tidy_from_block(dct, year, block):
     data = dct[year].get(block, {})
-    return pd.DataFrame({"Categoría": list(data.keys()), "Valor": list(data.values())}).assign(Año=year)
+    return pd.DataFrame(
+        {"Categoría": list(data.keys()), "Valor": list(data.values())}
+    ).assign(Año=year)
 
 
 def parse_countries(xls):
@@ -57,14 +63,18 @@ def parse_countries(xls):
     Tolera filas vacías y encabezados en la primera/siguientes filas.
     """
     result = {}
-    for sheet, year in [("Países 2023", "2023"),
-                        ("Países 2024", "2024"),
-                        ("Países 2025", "2025")]:
+    for sheet, year in [
+        ("Países 2023", "2023"),
+        ("Países 2024", "2024"),
+        ("Países 2025", "2025"),
+    ]:
 
         try:
             raw = pd.read_excel(xls, sheet_name=sheet, header=None)
         except Exception:
-            result[year] = pd.DataFrame(columns=["Año","Tipo","País","Modalidad","Casos"])
+            result[year] = pd.DataFrame(
+                columns=["Año", "Tipo", "País", "Modalidad", "Casos"]
+            )
             continue
 
         # 1) Buscar la fila de encabezados (donde aparezca 'Country' y 'Modality')
@@ -76,18 +86,20 @@ def parse_countries(xls):
                 break
         if hdr_idx is None:
             # No se encontró un header claro
-            result[year] = pd.DataFrame(columns=["Año","Tipo","País","Modalidad","Casos"])
+            result[year] = pd.DataFrame(
+                columns=["Año", "Tipo", "País", "Modalidad", "Casos"]
+            )
             continue
 
         header = raw.iloc[hdr_idx].astype(str).str.strip().str.lower().tolist()
-        body = raw.iloc[hdr_idx+1:].reset_index(drop=True)
+        body = raw.iloc[hdr_idx + 1 :].reset_index(drop=True)
 
         # 2) Localizar los bloques por la posición de 'country' en las columnas
         country_idx = [j for j, name in enumerate(header) if name == "country"]
         tidy_parts = []
         for k, j in enumerate(country_idx):
             # asumimos que las 2 columnas siguientes son 'modality' y 'count'
-            cols = [j, j+1, j+2]
+            cols = [j, j + 1, j + 2]
             sub = body.loc[:, cols].copy()
             sub.columns = ["País", "Modalidad", "Casos"]
 
@@ -96,24 +108,30 @@ def parse_countries(xls):
             sub["Modalidad"] = sub["Modalidad"].astype(str).str.strip()
             sub["Casos"] = pd.to_numeric(
                 sub["Casos"].astype(str).str.replace(",", ".", regex=False),
-                errors="coerce"
+                errors="coerce",
             )
 
             sub = sub.dropna(subset=["País", "Casos"])  # elimina vacíos
-            sub["Casos"] = sub["Casos"].astype(int)     # normalmente son enteros
+            sub["Casos"] = sub["Casos"].astype(int)  # normalmente son enteros
             sub["Tipo"] = "Entrante" if k == 0 else "Saliente"
             sub["Año"] = year
             tidy_parts.append(sub[["Año", "Tipo", "País", "Modalidad", "Casos"]])
 
-        result[year] = pd.concat(tidy_parts, ignore_index=True) if tidy_parts else \
-                       pd.DataFrame(columns=["Año","Tipo","País","Modalidad","Casos"])
+        result[year] = (
+            pd.concat(tidy_parts, ignore_index=True)
+            if tidy_parts
+            else pd.DataFrame(columns=["Año", "Tipo", "País", "Modalidad", "Casos"])
+        )
 
     return result
 
 
-
-def bar(df, x, y, title, color=None, sort='-y'):
-    enc = {"x": alt.X(x, sort=sort, title=""), "y": alt.Y(y, title="Total"), "tooltip": [x, y]}
+def bar(df, x, y, title, color=None, sort="-y"):
+    enc = {
+        "x": alt.X(x, sort=sort, title=""),
+        "y": alt.Y(y, title="Total"),
+        "tooltip": [x, y],
+    }
     if color:
         enc["color"] = alt.Color(color, legend=alt.Legend(title=""))
     return alt.Chart(df).mark_bar().encode(**enc).properties(height=330, title=title)
@@ -124,7 +142,9 @@ def bar(df, x, y, title, color=None, sort='-y'):
 BASE_DIR = Path(__file__).resolve().parent
 
 # Archivo por defecto dentro de la subcarpeta Data
-DEFAULT_FILE = BASE_DIR / "Data" / "Movilidad_FICT.xlsx"   # <- aquí sí permite subcarpeta
+DEFAULT_FILE = (
+    BASE_DIR / "Data" / "Movilidad_FICT.xlsx"
+)  # <- aquí sí permite subcarpeta
 
 # Carga con fallback al cargador de archivos
 uploaded = st.sidebar.file_uploader("Cargar Excel (xlsx)", type=["xlsx"])
@@ -142,50 +162,88 @@ else:
 comp_dict, year_totals = parse_comparativa(xls)
 countries_dict = parse_countries(xls)
 
-year = st.sidebar.selectbox("Año", ["2023","2024","2025"], index=2)
+year = st.sidebar.selectbox("Año", ["2023", "2024", "2025"], index=2)
 
-tabs = st.tabs([
-    "Comparativa 2023–2025",
-    "Tipo de movilidad",
-    "Categoría: Movilidades por carrera",
-    "Modalidad",
-    "Tipo de Actividad",
-    "Países",
-])
+tabs = st.tabs(
+    [
+        "Comparativa 2023–2025",
+        "Tipo de movilidad",
+        "Categoría: Movilidades por carrera",
+        "Modalidad",
+        "Tipo de Actividad",
+        "Países",
+    ]
+)
 
 with tabs[0]:
     st.subheader("Comparativa global 2023–2025")
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Total 2023", int(year_totals.get("2023",0)))
-    c2.metric("Total 2024", int(year_totals.get("2024",0)))
-    c3.metric("Total 2025", int(year_totals.get("2025",0)))
-    for block in ["Tipo de movilidad","Nivel","Categoría","Modalidad"]:
-        if not any(block in comp_dict[y] for y in ["2023","2024","2025"]):
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total 2023", int(year_totals.get("2023", 0)))
+    c2.metric("Total 2024", int(year_totals.get("2024", 0)))
+    c3.metric("Total 2025", int(year_totals.get("2025", 0)))
+    for block in ["Tipo de movilidad", "Nivel", "Categoría", "Modalidad"]:
+        if not any(block in comp_dict[y] for y in ["2023", "2024", "2025"]):
             continue
-        df_blk = pd.concat([tidy_from_block(comp_dict, y, block) for y in ["2023","2024","2025"] if block in comp_dict[y]], ignore_index=True)
-        st.altair_chart(bar(df_blk, "Categoría", "Valor", f"{block} — Comparativa 2023–2025", color="Año"),
-                        use_container_width=True)
+        df_blk = pd.concat(
+            [
+                tidy_from_block(comp_dict, y, block)
+                for y in ["2023", "2024", "2025"]
+                if block in comp_dict[y]
+            ],
+            ignore_index=True,
+        )
+        st.altair_chart(
+            bar(
+                df_blk,
+                "Categoría",
+                "Valor",
+                f"{block} — Comparativa 2023–2025",
+                color="Año",
+            ),
+            use_container_width=True,
+        )
 
 with tabs[1]:
     st.subheader(f"Tipo de movilidad — {year}")
     if "Tipo de movilidad" in comp_dict[year]:
         df_m = tidy_from_block(comp_dict, year, "Tipo de movilidad")
         col1, col2 = st.columns(2)
-        col1.metric("Entrante", int(df_m.loc[df_m["Categoría"]=="Movilidad Entrante","Valor"].sum()))
-        col2.metric("Saliente", int(df_m.loc[df_m["Categoría"]=="Movilidad Saliente","Valor"].sum()))
-        st.altair_chart(bar(df_m, "Categoría", "Valor", f"Tipo de movilidad ({year})"), use_container_width=True)
+        col1.metric(
+            "Entrante",
+            int(df_m.loc[df_m["Categoría"] == "Movilidad Entrante", "Valor"].sum()),
+        )
+        col2.metric(
+            "Saliente",
+            int(df_m.loc[df_m["Categoría"] == "Movilidad Saliente", "Valor"].sum()),
+        )
+        st.altair_chart(
+            bar(df_m, "Categoría", "Valor", f"Tipo de movilidad ({year})"),
+            use_container_width=True,
+        )
     else:
         st.info("No hay datos de Tipo de movilidad para este año.")
 
 with tabs[2]:
     st.subheader(f"Movilidades por carrera — {year}")
     if "Carreras y Programas" in comp_dict[year]:
-        df_carr = tidy_from_block(comp_dict, year, "Carreras y Programas").sort_values("Valor", ascending=False)
-        topn = st.slider("Mostrar top N carreras", 5, len(df_carr), min(10, len(df_carr)))
+        df_carr = tidy_from_block(comp_dict, year, "Carreras y Programas").sort_values(
+            "Valor", ascending=False
+        )
+        topn = st.slider(
+            "Mostrar top N carreras", 5, len(df_carr), min(10, len(df_carr))
+        )
         col1, col2 = st.columns(2)
-        col1.metric("Carreras con >0", int((df_carr["Valor"]>0).sum()))
+        col1.metric("Carreras con >0", int((df_carr["Valor"] > 0).sum()))
         col2.metric("Total", int(df_carr["Valor"].sum()))
-        st.altair_chart(bar(df_carr.head(topn), "Categoría", "Valor", f"Carreras y Programas ({year})"), use_container_width=True)
+        st.altair_chart(
+            bar(
+                df_carr.head(topn),
+                "Categoría",
+                "Valor",
+                f"Carreras y Programas ({year})",
+            ),
+            use_container_width=True,
+        )
     else:
         st.info("No hay datos de carreras para este año.")
 
@@ -194,42 +252,97 @@ with tabs[3]:
     if "Modalidad" in comp_dict[year]:
         df_mod = tidy_from_block(comp_dict, year, "Modalidad")
         col1, col2 = st.columns(2)
-        col1.metric("Virtual", int(df_mod.loc[df_mod["Categoría"].str.lower()=="virtual","Valor"].sum()))
-        col2.metric("Presencial", int(df_mod.loc[df_mod["Categoría"].str.lower()=="presencial","Valor"].sum()))
-        st.altair_chart(bar(df_mod, "Categoría", "Valor", f"Modalidad ({year})"), use_container_width=True)
+        col1.metric(
+            "Virtual",
+            int(
+                df_mod.loc[df_mod["Categoría"].str.lower() == "virtual", "Valor"].sum()
+            ),
+        )
+        col2.metric(
+            "Presencial",
+            int(
+                df_mod.loc[
+                    df_mod["Categoría"].str.lower() == "presencial", "Valor"
+                ].sum()
+            ),
+        )
+        st.altair_chart(
+            bar(df_mod, "Categoría", "Valor", f"Modalidad ({year})"),
+            use_container_width=True,
+        )
     else:
         st.info("No hay datos de modalidad para este año.")
 
 with tabs[4]:
     st.subheader(f"Tipo de Actividad — {year}")
     if "Tipo de Actividad" in comp_dict[year]:
-        df_act = tidy_from_block(comp_dict, year, "Tipo de Actividad").sort_values("Valor", ascending=False)
+        df_act = tidy_from_block(comp_dict, year, "Tipo de Actividad").sort_values(
+            "Valor", ascending=False
+        )
         col1, col2, col3 = st.columns(3)
-        col1.metric("Intercambio Académico", int(df_act.loc[df_act["Categoría"].str.startswith("Intercambio"),"Valor"].sum()))
-        col2.metric("Cursos de Formación", int(df_act.loc[df_act["Categoría"].str.startswith("Cursos"),"Valor"].sum()))
-        col3.metric("Otros (Eventos/Estancia/Presentación)", int(df_act.loc[~df_act["Categoría"].str.startswith(("Intercambio","Cursos")),"Valor"].sum()))
-        st.altair_chart(bar(df_act, "Categoría", "Valor", f"Tipo de Actividad ({year})"), use_container_width=True)
+        col1.metric(
+            "Intercambio Académico",
+            int(
+                df_act.loc[
+                    df_act["Categoría"].str.startswith("Intercambio"), "Valor"
+                ].sum()
+            ),
+        )
+        col2.metric(
+            "Cursos de Formación",
+            int(
+                df_act.loc[df_act["Categoría"].str.startswith("Cursos"), "Valor"].sum()
+            ),
+        )
+        col3.metric(
+            "Otros (Eventos/Estancia/Presentación)",
+            int(
+                df_act.loc[
+                    ~df_act["Categoría"].str.startswith(("Intercambio", "Cursos")),
+                    "Valor",
+                ].sum()
+            ),
+        )
+        st.altair_chart(
+            bar(df_act, "Categoría", "Valor", f"Tipo de Actividad ({year})"),
+            use_container_width=True,
+        )
     else:
         st.info("No hay datos de tipo de actividad para este año.")
 
 with tabs[5]:
     st.subheader(f"Países — {year}")
-    df_pais = countries_dict.get(year, pd.DataFrame(columns=["País","Tipo","Modalidad","Casos"]))
+    df_pais = countries_dict.get(
+        year, pd.DataFrame(columns=["País", "Tipo", "Modalidad", "Casos"])
+    )
     if df_pais.empty:
         st.info("No se encontraron datos de países en el Excel para este año.")
     else:
-        tipo = st.radio("Tipo", ["Entrante","Saliente"], horizontal=True)
-        df_t = df_pais[df_pais["Tipo"]==tipo]
+        tipo = st.radio("Tipo", ["Entrante", "Saliente"], horizontal=True)
+        df_t = df_pais[df_pais["Tipo"] == tipo]
         col1, col2 = st.columns(2)
         col1.metric(f"Países ({tipo})", df_t["País"].nunique())
         col2.metric("Total casos", int(df_t["Casos"].sum()))
-        st.altair_chart(bar(df_t.groupby("País", as_index=False)["Casos"].sum().sort_values("Casos", ascending=False),
-                            "País", "Casos", f"Países — {tipo} ({year})"), use_container_width=True)
-        st.altair_chart(bar(df_t.groupby("Modalidad", as_index=False)["Casos"].sum(),
-                            "Modalidad", "Casos", f"Modalidad — {tipo} ({year})"), use_container_width=True)
+        st.altair_chart(
+            bar(
+                df_t.groupby("País", as_index=False)["Casos"]
+                .sum()
+                .sort_values("Casos", ascending=False),
+                "País",
+                "Casos",
+                f"Países — {tipo} ({year})",
+            ),
+            use_container_width=True,
+        )
+        st.altair_chart(
+            bar(
+                df_t.groupby("Modalidad", as_index=False)["Casos"].sum(),
+                "Modalidad",
+                "Casos",
+                f"Modalidad — {tipo} ({year})",
+            ),
+            use_container_width=True,
+        )
 
 st.divider()
 st.caption("© FICT — ESPOL | Dashboard construido con Streamlit y Altair")
-
-
-
