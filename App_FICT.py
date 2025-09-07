@@ -20,7 +20,7 @@ st.image(logo_fict)
 
 st.title("🎓 Movilidad Académica FICT — 2025")
 st.caption("Fuente: Coordinación de Movilidad Académica FICT.")
-st.caption("Autor: M.Sc. Freddy Carrión Maldonado")
+st.markdown("Freddy Carrión Maldonao [aquí](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)")
 
 
 # ------------------------- Helpers -------------------------
