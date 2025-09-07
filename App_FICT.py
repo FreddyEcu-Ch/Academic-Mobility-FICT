@@ -131,14 +131,16 @@ def parse_countries(xls):
     return result
 
 
-def bar(df, x, y, title, color=None, sort="-y"):
+def bar(df, x, y, title, color=None, sort='-y'):
     enc = {
-        "x": alt.X(x, sort=sort, title=""),
-        "y": alt.Y(y, title="Total"),
-        "tooltip": [x, y],
+        "x": alt.X(f"{x}:N", sort=sort, title=""),
+        "y": alt.Y(f"{y}:Q", title="Total"),
+        "tooltip": [f"{x}:N", f"{y}:Q"]
     }
     if color:
-        enc["color"] = alt.Color(color, legend=alt.Legend(title=""))
+        enc["color"] = alt.Color(f"{color}:N",
+                                 legend=alt.Legend(title=""),
+                                 scale=alt.Scale(scheme="tableau10"))
     return alt.Chart(df).mark_bar().encode(**enc).properties(height=330, title=title)
 
 
@@ -194,23 +196,12 @@ with tabs[0]:
         if not any(block in comp_dict[y] for y in ["2023", "2024", "2025"]):
             continue
         df_blk = pd.concat(
-            [
-                tidy_from_block(comp_dict, y, block)
-                for y in ["2023", "2024", "2025"]
-                if block in comp_dict[y]
-            ],
-            ignore_index=True,
-        )
+            [tidy_from_block(comp_dict, y, block) for y in ["2023", "2024", "2025"] if
+             block in comp_dict[y]], ignore_index=True)
         st.altair_chart(
-            bar(
-                df_blk,
-                "Categoría",
-                "Valor",
-                f"{block} — Comparativa 2023–2025",
-                color="Año",
-            ),
-            use_container_width=True,
-        )
+            bar(df_blk, "Categoría", "Valor", f"{block} — Comparativa 2023–2025",
+                color="Año"),
+            use_container_width=True)
 
 with tabs[1]:
     st.subheader(f"Tipo de movilidad — {year}")
@@ -226,9 +217,11 @@ with tabs[1]:
             int(df_m.loc[df_m["Categoría"] == "Movilidad Saliente", "Valor"].sum()),
         )
         st.altair_chart(
-            bar(df_m, "Categoría", "Valor", f"Tipo de movilidad ({year})"),
-            use_container_width=True,
+            bar(df_m, "Categoría", "Valor", f"Tipo de movilidad ({year})",
+                color="Categoría"),
+            use_container_width=True
         )
+
     else:
         st.info("No hay datos de Tipo de movilidad para este año.")
 
@@ -245,14 +238,11 @@ with tabs[2]:
         col1.metric("Carreras con >0", int((df_carr["Valor"] > 0).sum()))
         col2.metric("Total", int(df_carr["Valor"].sum()))
         st.altair_chart(
-            bar(
-                df_carr.head(topn),
-                "Categoría",
-                "Valor",
-                f"Carreras y Programas ({year})",
-            ),
-            use_container_width=True,
+            bar(df_carr.head(topn), "Categoría", "Valor",
+                f"Carreras y Programas ({year})", color="Categoría"),
+            use_container_width=True
         )
+
     else:
         st.info("No hay datos de carreras para este año.")
 
@@ -276,9 +266,10 @@ with tabs[3]:
             ),
         )
         st.altair_chart(
-            bar(df_mod, "Categoría", "Valor", f"Modalidad ({year})"),
-            use_container_width=True,
+            bar(df_mod, "Categoría", "Valor", f"Modalidad ({year})", color="Categoría"),
+            use_container_width=True
         )
+
     else:
         st.info("No hay datos de modalidad para este año.")
 
@@ -313,9 +304,11 @@ with tabs[4]:
             ),
         )
         st.altair_chart(
-            bar(df_act, "Categoría", "Valor", f"Tipo de Actividad ({year})"),
-            use_container_width=True,
+            bar(df_act, "Categoría", "Valor", f"Tipo de Actividad ({year})",
+                color="Categoría"),
+            use_container_width=True
         )
+
     else:
         st.info("No hay datos de tipo de actividad para este año.")
 
@@ -354,4 +347,4 @@ with tabs[5]:
         )
 
 st.divider()
-st.caption("© FICT — ESPOL | Dashboard construido con Streamlit y Altair")
+st.caption("© FICT — ESPOL | Septiembre 2025")
