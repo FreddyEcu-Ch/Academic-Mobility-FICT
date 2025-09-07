@@ -1,7 +1,9 @@
 # Streamlit app: Movilidad Académica FICT (2023–2025) con carga por defecto del Excel
 import streamlit as st
+import numpy as np
 import pandas as pd
 import altair as alt
+import plotly.express as px
 from PIL import Image
 from pathlib import Path
 
@@ -314,37 +316,108 @@ with tabs[4]:
 
 with tabs[5]:
     st.subheader(f"Países — {year}")
-    df_pais = countries_dict.get(
-        year, pd.DataFrame(columns=["País", "Tipo", "Modalidad", "Casos"])
-    )
+
+    df_pais = countries_dict.get(year, pd.DataFrame(columns=["País","Tipo","Modalidad","Casos"]))
     if df_pais.empty:
         st.info("No se encontraron datos de países en el Excel para este año.")
     else:
+        # --- Filtros
         tipo = st.radio("Tipo", ["Entrante", "Saliente"], horizontal=True)
-        df_t = df_pais[df_pais["Tipo"] == tipo]
-        col1, col2 = st.columns(2)
-        col1.metric(f"Países ({tipo})", df_t["País"].nunique())
-        col2.metric("Total casos", int(df_t["Casos"].sum()))
+        map_type = st.radio("Tipo de mapa", ["Coroplético", "Burbujas"], horizontal=True)
+
+        # --- Prepara datos
+        df_t = df_pais[df_pais["Tipo"] == tipo].copy()
+
+        # Quita filas de totales si existieran
+        df_t = df_t[~df_t["País"].str.strip().str.lower().isin(["total", "totales", "subtotal"])]
+
+        # Asegura numérico
+        df_t["Casos"] = pd.to_numeric(df_t["Casos"], errors="coerce").fillna(0)
+
+        # Map de nombres en ES -> EN (agrega/ajusta si te faltan países)
+        name_map = {
+            "España": "Spain", "Italia": "Italy", "Colombia": "Colombia", "Rusia": "Russia",
+            "Ecuador": "Ecuador", "Perú": "Peru", "Chile": "Chile", "Argentina": "Argentina",
+            "México": "Mexico", "Brasil": "Brazil", "Estados Unidos": "United States",
+            "Reino Unido": "United Kingdom", "Países Bajos": "Netherlands",
+            "Corea del Sur": "South Korea", "Alemania": "Germany", "Francia": "France",
+            "Suiza": "Switzerland", "Austria": "Austria", "Suecia": "Sweden", "Noruega": "Norway",
+            "Finlandia": "Finland", "Dinamarca": "Denmark", "Polonia": "Poland", "Portugal": "Portugal",
+            "Irlanda": "Ireland", "República Checa": "Czechia", "Hungría": "Hungary",
+            "Grecia": "Greece", "Turquía": "Turkey", "Japón": "Japan", "China": "China",
+            "India": "India", "Australia": "Australia", "Nueva Zelanda": "New Zealand",
+            "Sudáfrica": "South Africa", "Marruecos": "Morocco"
+        }
+        df_t["country_en"] = df_t["País"].replace(name_map)
+        # Si no está en el diccionario, deja el nombre original
+        df_t["country_en"] = np.where(df_t["country_en"].isna() | (df_t["country_en"].str.strip() == ""),
+                                      df_t["País"], df_t["country_en"])
+
+        # KPIs
+        c1, c2 = st.columns(2)
+        c1.metric(f"Países ({tipo})", df_t["country_en"].nunique())
+        c2.metric("Total casos", int(df_t["Casos"].sum()))
+
+        # --- Mapa
+        if map_type == "Coroplético":
+            df_geo = df_t.groupby("country_en", as_index=False)["Casos"].sum()
+            # Bubbles
+            # Choropleth
+            fig = px.choropleth(
+                df_geo,
+                locations="country_en",
+                locationmode="country names",
+                color="Casos",
+                color_continuous_scale="Blues",
+                projection="natural earth",
+                title=f"{tipo} — {year}",
+                hover_name="country_en",
+                labels={"Casos": "Casos"}
+            )
+            fig.update_geos(
+                showcountries=True,  # draw country borders
+                showcoastlines=True,  # draw coastlines
+                showframe=False,  # no outer frame
+                countrycolor="black",  # optional styling
+                countrywidth=0.5,
+                coastlinecolor="gray"
+            )
+
+        else:  # Burbujas
+            df_geo = df_t.groupby("country_en", as_index=False)["Casos"].sum()
+            # Bubbles
+            fig = px.scatter_geo(
+                df_geo,
+                locations="country_en",
+                locationmode="country names",
+                size="Casos",
+                color="Casos",
+                color_continuous_scale="Blues",
+                projection="natural earth",
+                title=f"{tipo} — {year}",
+                hover_name="country_en",
+                labels={"Casos": "Casos"}
+            )
+            fig.update_traces(marker_line_color="black", marker_line_width=0.3,
+                              opacity=0.85)
+            fig.update_geos(
+                showcountries=True,
+                showcoastlines=True,
+                showframe=False,
+                countrycolor="black",
+                countrywidth=0.5,
+                coastlinecolor="gray"
+            )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Ranking por país (barras coloreadas por país)
         st.altair_chart(
-            bar(
-                df_t.groupby("País", as_index=False)["Casos"]
-                .sum()
-                .sort_values("Casos", ascending=False),
-                "País",
-                "Casos",
-                f"Países — {tipo} ({year})",
-            ),
-            use_container_width=True,
+            bar(df_geo.sort_values("Casos", ascending=False),
+                "country_en", "Casos", f"Ranking de países — {tipo} ({year})", color="country_en"),
+            use_container_width=True
         )
-        st.altair_chart(
-            bar(
-                df_t.groupby("Modalidad", as_index=False)["Casos"].sum(),
-                "Modalidad",
-                "Casos",
-                f"Modalidad — {tipo} ({year})",
-            ),
-            use_container_width=True,
-        )
+
 
 st.divider()
 st.caption("© FICT — ESPOL | Septiembre 2025")
