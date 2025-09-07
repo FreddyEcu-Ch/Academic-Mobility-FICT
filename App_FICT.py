@@ -182,16 +182,15 @@ countries_dict = parse_countries(xls)
 
 year = st.sidebar.selectbox("Año", ["2023", "2024", "2025"], index=2)
 
-tabs = st.tabs(
-    [
-        "Comparativa 2023–2025",
-        "Tipo de movilidad",
-        "Categoría: Movilidades por carrera",
-        "Modalidad",
-        "Tipo de Actividad",
-        "Países",
-    ]
-)
+tab_titles = [
+    ("📊", "Comparativa 2023–2025"),
+    ("🔁", "Tipo de movilidad"),
+    ("🎓", "Categoría: Movilidades por carrera"),
+    ("🖥️", "Modalidad"),
+    ("🧭", "Tipo de Actividad"),
+    ("🗺️", "Países"),
+]
+tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
 
 with tabs[0]:
     st.subheader("Comparativa global 2023–2025")
