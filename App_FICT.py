@@ -2,14 +2,19 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+from PIL import Image
 from pathlib import Path
 
 st.set_page_config(
-    page_title="Movilidad Académica FICT 2023–2025",
+    page_title="Movilidad Académica FICT",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# Add the logo of FICT
+logo_fict = Image.open("Resources/LogoFICTverde.png")
+st.image(logo_fict)
 
 st.title("🎓 Movilidad Académica FICT — 2025")
 st.caption("Fuente: Coordinación de Movilidad Académica FICT.")
@@ -145,6 +150,10 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_FILE = (
     BASE_DIR / "Data" / "Movilidad_FICT.xlsx"
 )  # <- aquí sí permite subcarpeta
+
+# App ESPOL Logo in Sidebar
+logo_espol = Image.open("Resources/ESPOL_Negro.png")
+st.sidebar.image(logo_espol)
 
 # Carga con fallback al cargador de archivos
 uploaded = st.sidebar.file_uploader("Cargar Excel (xlsx)", type=["xlsx"])
