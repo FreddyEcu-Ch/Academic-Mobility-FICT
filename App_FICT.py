@@ -18,7 +18,10 @@ st.set_page_config(
 logo_fict = Image.open("Resources/LogoFICTverde.png")
 st.image(logo_fict)
 
-st.title("🎓 Movilidad Académica FICT — 2025")
+st.markdown(
+    "<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>",
+    unsafe_allow_html=True
+)
 st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
 st.markdown(
     "**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)"
