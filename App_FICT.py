@@ -14,18 +14,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add the logo of FICT
-logo_fict = Image.open("Resources/LogoFICTverde.png")
-st.image(logo_fict)
 
-st.markdown(
-    "<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>",
-    unsafe_allow_html=True
-)
-st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
-st.markdown(
-    "**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)"
-)
+@st.cache_resource
+def load_image_cached(path: str):
+    try:
+        return Image.open(path)
+    except Exception:
+        return None
 
 
 # ------------------------- Helpers -------------------------
@@ -153,6 +148,21 @@ def bar(df, x, y, title, color=None, sort="-y"):
         )
     return alt.Chart(df).mark_bar().encode(**enc).properties(height=330, title=title)
 
+
+logo_fict = load_image_cached("Resources/LogoFICTverde.png")
+if logo_fict:
+    st.image(logo_fict)
+else:
+    st.write("🎓 Movilidad Académica FICT")
+
+st.markdown("<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>", unsafe_allow_html=True)
+st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
+st.markdown("**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)")
+
+# Sidebar logo
+logo_espol = load_image_cached("Resources/ESPOL_Negro.png")
+if logo_espol:
+    st.sidebar.image(logo_espol)
 
 # ------------------------- Carga del Excel -------------------------
 # Carpeta donde está el script
