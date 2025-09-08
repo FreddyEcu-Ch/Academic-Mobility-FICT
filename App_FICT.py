@@ -167,11 +167,11 @@ DEFAULT_FILE = (
 logo_espol = Image.open("Resources/ESPOL_Negro.png")
 st.sidebar.image(logo_espol)
 
-# st.markdown("""
-# <style>
-#     [data-testid="stSidebar"] [data-testid="stFileUploader"] { display: none; }
-# </style>
-# """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] [data-testid="stFileUploader"] { display: none; }
+</style>
+""", unsafe_allow_html=True)
 
 uploaded = st.sidebar.file_uploader("Cargar Excel (xlsx)", type=["xlsx"])
 
@@ -180,7 +180,7 @@ if uploaded is not None:
     st.sidebar.success(f"Archivo cargado: {uploaded.name}")
 elif DEFAULT_FILE.exists():
     xls = pd.ExcelFile(DEFAULT_FILE)
-    st.sidebar.info(f"Usando archivo por defecto: {DEFAULT_FILE}")
+    # st.sidebar.info(f"Usando archivo por defecto: {DEFAULT_FILE}")
 else:
     st.error("No se encontró el Excel por defecto. Suba el archivo para continuar.")
     st.stop()
