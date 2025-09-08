@@ -173,10 +173,6 @@ DEFAULT_FILE = (
     BASE_DIR / "Data" / "Movilidad_FICT.xlsx"
 )  # <- aquí sí permite subcarpeta
 
-# App ESPOL Logo in Sidebar
-logo_espol = Image.open("Resources/ESPOL_Negro.png")
-st.sidebar.image(logo_espol)
-
 st.markdown("""
 <style>
     [data-testid="stSidebar"] [data-testid="stFileUploader"] { display: none; }
