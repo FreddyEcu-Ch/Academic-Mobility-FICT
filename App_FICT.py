@@ -6,6 +6,8 @@ import altair as alt
 import plotly.express as px
 from PIL import Image
 from pathlib import Path
+from st_aggrid import AgGrid, GridOptionsBuilder
+
 
 st.set_page_config(
     page_title="Movilidad Académica FICT",
@@ -26,6 +28,7 @@ st.markdown(
     </style>
     """, unsafe_allow_html=True
 )
+
 
 @st.cache_resource
 def load_image_cached(path: str):
