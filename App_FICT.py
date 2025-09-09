@@ -135,7 +135,7 @@ def parse_countries(xls):
 
 
 @st.cache_data
-def load_funcionarios(path="Data/Registros_Relex2025.xlsx", sheet="SALIENTE"):
+def load_funcionarios(path="Data/REGISTROS_RELEX2025.xlsx", sheet="SALIENTE"):
     p = Path(path)
     if not p.exists():
         st.error(f"No se encontró el archivo: {p}. Colócalo en la carpeta Data/")
