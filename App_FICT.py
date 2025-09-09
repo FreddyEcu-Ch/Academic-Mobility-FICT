@@ -26,7 +26,8 @@ st.markdown(
             border-bottom: 1px solid #eee;
         }
     </style>
-    """, unsafe_allow_html=True
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -160,34 +161,49 @@ def load_funcionarios(path="Data/REGISTROS_RELEX2025.xlsx", sheet="SALIENTE"):
     df = pd.read_excel(p, sheet_name=sheet)
 
     # Limpia detalles de encabezados (espacio no-rompible / saltos de línea)
-    df.columns = [str(c).replace("\xa0", " ").replace("\n", " ").strip() for c in df.columns]
+    df.columns = [
+        str(c).replace("\xa0", " ").replace("\n", " ").strip() for c in df.columns
+    ]
 
     # Combina nombres + apellidos (o usa "Nombre" si ya viene armado)
     first = "Nombre(s) de la persona saliente que realiza la movilidad"
-    last  = "Apellido(s) de la persona saliente que realiza la movilidad"
+    last = "Apellido(s) de la persona saliente que realiza la movilidad"
     if first in df.columns and last in df.columns:
-        nombres = (df[first].astype(str).str.strip() + " " + df[last].astype(str).str.strip()).str.strip()
+        nombres = (
+            df[first].astype(str).str.strip() + " " + df[last].astype(str).str.strip()
+        ).str.strip()
     elif "Nombre" in df.columns:
         nombres = df["Nombre"].astype(str).str.strip()
     else:
         nombres = pd.Series("", index=df.index)
 
     # Construye el dataframe final con los nombres de columnas requeridos
-    out = pd.DataFrame({
-        "Nombres": nombres,
-        "Fecha de inicio": pd.to_datetime(
-            df.get("Fecha de inicio de la movilidad saliente"), errors="coerce"
-        ).dt.strftime("%Y-%m-%d"),
-        "Fecha de fin": pd.to_datetime(
-            df.get("Fecha de finalización de la movilidad saliente"), errors="coerce"
-        ).dt.strftime("%Y-%m-%d"),
-        "Duración (Horas)": df.get("Duración en horas dedicadas a la movilidad saliente"),
-        "Actividad Realizada": df.get("Actividad realizada"),
-        "Institución externa": df.get("Nombre de la Institución externa que aplica la persona saliente"),
-        "País": df.get("País donde se encuentra la Institución externa que aplica la persona saliente"),
-        "Rol en ESPOL": df.get("En la ESPOL, indique el rol que desempeña la persona saliente"),
-        "Modalidad": df.get("Modalidad de la movilidad saliente"),
-    })
+    out = pd.DataFrame(
+        {
+            "Nombres": nombres,
+            "Fecha de inicio": pd.to_datetime(
+                df.get("Fecha de inicio de la movilidad saliente"), errors="coerce"
+            ).dt.strftime("%Y-%m-%d"),
+            "Fecha de fin": pd.to_datetime(
+                df.get("Fecha de finalización de la movilidad saliente"),
+                errors="coerce",
+            ).dt.strftime("%Y-%m-%d"),
+            "Duración (Horas)": df.get(
+                "Duración en horas dedicadas a la movilidad saliente"
+            ),
+            "Actividad Realizada": df.get("Actividad realizada"),
+            "Institución externa": df.get(
+                "Nombre de la Institución externa que aplica la persona saliente"
+            ),
+            "País": df.get(
+                "País donde se encuentra la Institución externa que aplica la persona saliente"
+            ),
+            "Rol en ESPOL": df.get(
+                "En la ESPOL, indique el rol que desempeña la persona saliente"
+            ),
+            "Modalidad": df.get("Modalidad de la movilidad saliente"),
+        }
+    )
 
     return out
 
@@ -213,9 +229,14 @@ if logo_fict:
 else:
     st.write("🎓 Movilidad Académica FICT")
 
-st.markdown("<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>",
+    unsafe_allow_html=True,
+)
 st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
-st.markdown("**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)")
+st.markdown(
+    "**Coordinador:** [M.Sc. Freddy Carrión Maldonado](https://www.linkedin.com/in/freddy-carri%C3%B3n-maldonado-b3579b125/)"
+)
 
 # Sidebar logo
 logo_espol = load_image_cached("Resources/ESPOL_Negro.png")
@@ -231,11 +252,14 @@ DEFAULT_FILE = (
     BASE_DIR / "Data" / "Movilidad_FICT.xlsx"
 )  # <- aquí sí permite subcarpeta
 
-st.markdown("""
+st.markdown(
+    """
 <style>
     [data-testid="stSidebar"] [data-testid="stFileUploader"] { display: none; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 uploaded = st.sidebar.file_uploader("Cargar Excel (xlsx)", type=["xlsx"])
 
