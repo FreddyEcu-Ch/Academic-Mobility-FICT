@@ -166,7 +166,7 @@ def load_funcionarios(path="Data/Registros_Relex2025.xlsx", sheet="SALIENTE"):
         "Fecha de fin": pd.to_datetime(
             df.get("Fecha de finalización de la movilidad saliente"), errors="coerce"
         ).dt.strftime("%Y-%m-%d"),
-        "Duración": df.get("Duración en horas dedicadas a la movilidad saliente"),
+        "Duración (Horas)": df.get("Duración en horas dedicadas a la movilidad saliente"),
         "Actividad Realizada": df.get("Actividad realizada"),
         "Institución externa": df.get("Nombre de la Institución externa que aplica la persona saliente"),
         "País": df.get("País donde se encuentra la Institución externa que aplica la persona saliente"),
