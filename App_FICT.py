@@ -244,7 +244,7 @@ tab_titles = [
     ("🔁", "Tipo de movilidad"),
     ("🎓", "Movilidades por carrera"),
     ("🖥️", "Modalidad"),
-    ("🧭", "Tipo de Actividad"),
+    ("🧭", "Actividad"),
     ("🗺️", "Países"),
     ("📋", "Funcionarios"),
 ]
