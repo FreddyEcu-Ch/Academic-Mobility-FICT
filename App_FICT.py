@@ -548,8 +548,10 @@ with tabs[5]:
         )
 
 with tabs[6]:
-    st.subheader("📋 Registro RELEX 2025")
-    df_relex = load_funcionarios()  # lee Data/Registros_Relex2025.xlsx
+    año = st.radio("Seleccione el año", (2023, 2024, 2025))
+    if año == 2025:
+        st.subheader("📋 Registro RELEX 2025")
+        df_relex = load_funcionarios()  # lee Data/Registros_Relex2025.xlsx
 
     if df_relex.empty:
         st.info("No hay datos para mostrar o faltan columnas requeridas en el Excel.")
