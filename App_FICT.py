@@ -571,7 +571,11 @@ with tabs[6]:
     if df_relex.empty:
         st.info("No hay datos para mostrar o faltan columnas requeridas en el Excel.")
     else:
-        st.dataframe(df_relex, use_container_width=True, hide_index=True)
+        gb = GridOptionsBuilder.from_dataframe(df_relex)
+        gb.configure_pagination(paginationAutoPageSize=True)
+        gb.configure_default_column(editable=True, grouptable=True)
+        grid_options = gb.build()
+        AgGrid(df_relex, gridOptions=grid_options, theme="streamlit")
 
         # Descarga opcional en CSV
         st.download_button(
