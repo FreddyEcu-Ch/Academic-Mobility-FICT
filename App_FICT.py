@@ -14,6 +14,18 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown(
+    """
+    <style>
+        .main-header {
+            font-size:32px !important;
+            font-weight:600;
+            padding-bottom:10px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+    """, unsafe_allow_html=True
+)
 
 @st.cache_resource
 def load_image_cached(path: str):
