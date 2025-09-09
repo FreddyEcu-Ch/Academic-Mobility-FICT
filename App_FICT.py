@@ -134,6 +134,49 @@ def parse_countries(xls):
     return result
 
 
+@st.cache_data
+def load_funcionarios(path="Data/Registros_Relex2025.xlsx", sheet="SALIENTE"):
+    p = Path(path)
+    if not p.exists():
+        st.error(f"No se encontró el archivo: {p}. Colócalo en la carpeta Data/")
+        return pd.DataFrame()
+
+    # Lee la hoja SALIENTE
+    df = pd.read_excel(p, sheet_name=sheet)
+
+    # Limpia detalles de encabezados (espacio no-rompible / saltos de línea)
+    df.columns = [str(c).replace("\xa0", " ").replace("\n", " ").strip() for c in df.columns]
+
+    # Combina nombres + apellidos (o usa "Nombre" si ya viene armado)
+    first = "Nombre(s) de la persona saliente que realiza la movilidad"
+    last  = "Apellido(s) de la persona saliente que realiza la movilidad"
+    if first in df.columns and last in df.columns:
+        nombres = (df[first].astype(str).str.strip() + " " + df[last].astype(str).str.strip()).str.strip()
+    elif "Nombre" in df.columns:
+        nombres = df["Nombre"].astype(str).str.strip()
+    else:
+        nombres = pd.Series("", index=df.index)
+
+    # Construye el dataframe final con los nombres de columnas requeridos
+    out = pd.DataFrame({
+        "Nombres": nombres,
+        "Fecha de inicio": pd.to_datetime(
+            df.get("Fecha de inicio de la movilidad saliente"), errors="coerce"
+        ).dt.strftime("%Y-%m-%d"),
+        "Fecha de fin": pd.to_datetime(
+            df.get("Fecha de finalización de la movilidad saliente"), errors="coerce"
+        ).dt.strftime("%Y-%m-%d"),
+        "Duración": df.get("Duración en horas dedicadas a la movilidad saliente"),
+        "Actividad Realizada": df.get("Actividad realizada"),
+        "Institución externa": df.get("Nombre de la Institución externa que aplica la persona saliente"),
+        "País": df.get("País donde se encuentra la Institución externa que aplica la persona saliente"),
+        "Rol en ESPOL": df.get("En la ESPOL, indique el rol que desempeña la persona saliente"),
+        "Modalidad": df.get("Modalidad de la movilidad saliente"),
+    })
+
+    return out
+
+
 def bar(df, x, y, title, color=None, sort="-y"):
     enc = {
         "x": alt.X(f"{x}:N", sort=sort, title=""),
@@ -199,12 +242,14 @@ year = st.sidebar.selectbox("Año", ["2023", "2024", "2025"], index=2)
 tab_titles = [
     ("📊", "Comparativa 2023–2025"),
     ("🔁", "Tipo de movilidad"),
-    ("🎓", "Categoría: Movilidades por carrera"),
+    ("🎓", "Movilidades por carrera"),
     ("🖥️", "Modalidad"),
     ("🧭", "Tipo de Actividad"),
     ("🗺️", "Países"),
+    ("📋", "Funcionarios"),
 ]
 tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
+
 
 with tabs[0]:
     st.subheader("Comparativa global 2023–2025")
@@ -500,6 +545,23 @@ with tabs[5]:
                 color="country_en",
             ),
             use_container_width=True,
+        )
+
+with tabs[6]:
+    st.subheader("📋 Registro RELEX 2025")
+    df_relex = load_funcionarios()  # lee Data/Registros_Relex2025.xlsx
+
+    if df_relex.empty:
+        st.info("No hay datos para mostrar o faltan columnas requeridas en el Excel.")
+    else:
+        st.dataframe(df_relex, use_container_width=True, hide_index=True)
+
+        # Descarga opcional en CSV
+        st.download_button(
+            "⬇️ Descargar CSV",
+            df_relex.to_csv(index=False).encode("utf-8"),
+            file_name="Registro_RELEX_2025.csv",
+            mime="text/csv",
         )
 
 
