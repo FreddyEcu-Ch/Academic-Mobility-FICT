@@ -43,17 +43,6 @@ def load_excel(src):
     return pd.ExcelFile(src)
 
 
-# NUEVO
-MESES_ES = {
-    1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
-    7:"Julio",8:"Agosto",9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"
-}
-
-def selector_granularidad(key: str):
-    """Radio para elegir 'Año' o 'Mes'. Usa key único por tab."""
-    return st.radio("Ver por:", ("Año", "Mes"), horizontal=True, key=key)
-
-
 def parse_comparativa(xls: pd.ExcelFile):
     df = pd.read_excel(xls, sheet_name="Comparativa 2023 - 2025")
     blocks = [(3, 4, 5, "2023"), (8, 9, 10, "2024"), (13, 14, 15, "2025")]
