@@ -44,6 +44,18 @@ def load_excel(src):
     return pd.ExcelFile(src)
 
 
+# NUEVO
+MESES_ES = {
+    1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
+    7:"Julio",8:"Agosto",9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"
+}
+
+
+def selector_granularidad(key: str):
+    """Radio para elegir 'Año' o 'Mes'. Usa key único por tab."""
+    return st.radio("Ver por:", ("Año", "Mes"), horizontal=True, key=key)
+
+
 def parse_comparativa(xls: pd.ExcelFile):
     df = pd.read_excel(xls, sheet_name="Comparativa 2023 - 2025")
     blocks = [(3, 4, 5, "2023"), (8, 9, 10, "2024"), (13, 14, 15, "2025")]
@@ -78,6 +90,46 @@ def tidy_from_block(dct, year, block):
     return pd.DataFrame(
         {"Categoría": list(data.keys()), "Valor": list(data.values())}
     ).assign(Año=year)
+
+
+# NUEVO
+def agrupar_por_periodo(
+    df: pd.DataFrame,
+    fecha_col: str,
+    granularidad: str,
+    anio_seleccionado: int | None,
+    by: list[str] | None = None,
+):
+    """
+    Devuelve un df con columnas: by + [Periodo, Total],
+    donde Periodo es 'Año' o 'Mes' (texto en español).
+    """
+    if df is None or df.empty or fecha_col not in df.columns:
+        return pd.DataFrame(), ("Año" if granularidad=="Año" else "Mes")
+
+    tmp = df.copy()
+    fechas = pd.to_datetime(tmp[fecha_col], errors="coerce")
+
+    if granularidad == "Año":
+        tmp["_periodo"] = fechas.dt.year
+        nombre_periodo = "Año"
+    else:
+        # Si es por Mes, filtramos por el año elegido
+        if anio_seleccionado is not None:
+            mask = fechas.dt.year == int(anio_seleccionado)
+            tmp = tmp[mask].copy()
+            fechas = pd.to_datetime(tmp[fecha_col], errors="coerce")
+        tmp["_periodo"] = fechas.dt.month.map(MESES_ES)
+        nombre_periodo = "Mes"
+
+    group_cols = (by or []) + ["_periodo"]
+    out = (
+        tmp.groupby(group_cols, dropna=False)
+           .size()
+           .reset_index(name="Total")
+           .rename(columns={"_periodo": nombre_periodo})
+    )
+    return out, nombre_periodo
 
 
 def parse_countries(xls):
@@ -289,34 +341,33 @@ tab_titles = [
 ]
 tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
 
+# NUEVO (si no existe ya un selector de año en el sidebar)
+anio_sidebar = st.sidebar.selectbox("Año", [2023, 2024, 2025], index=2, key="anio_sidebar")
+
 
 with tabs[0]:
     st.subheader("Comparativa global 2023–2025")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total 2023", int(year_totals.get("2023", 0)))
-    c2.metric("Total 2024", int(year_totals.get("2024", 0)))
-    c3.metric("Total 2025", int(year_totals.get("2025", 0)))
-    for block in ["Tipo de movilidad", "Nivel", "Categoría", "Modalidad"]:
-        if not any(block in comp_dict[y] for y in ["2023", "2024", "2025"]):
-            continue
-        df_blk = pd.concat(
-            [
-                tidy_from_block(comp_dict, y, block)
-                for y in ["2023", "2024", "2025"]
-                if block in comp_dict[y]
-            ],
-            ignore_index=True,
-        )
-        st.altair_chart(
-            bar(
-                df_blk,
-                "Categoría",
-                "Valor",
-                f"{block} — Comparativa 2023–2025",
-                color="Año",
-            ),
-            use_container_width=True,
-        )
+    gran = selector_granularidad("gran_comp")  # "Año" o "Mes"
+
+    if gran == "Año":
+        out, totals = parse_comparativa(xls, mode="year")
+        # Elige el bloque que graficas (ejemplo: "Carreras y Programas")
+        df_plot = tidy_from_block(out, str(anio_sidebar), "Carreras y Programas", mode="year")
+        if not df_plot.empty:
+            fig = px.bar(df_plot, x="Categoría", y="Valor", title=f"Comparativa {anio_sidebar} por categoría")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Sin datos para el año seleccionado.")
+    else:
+        out, totals = parse_comparativa(xls, mode="month", year_for_month=anio_sidebar)
+        df_plot = tidy_from_block(out, str(anio_sidebar), "Carreras y Programas", mode="month")
+        if not df_plot.empty:
+            # por mes, suele ser más informativo colorear por 'Categoría'
+            fig = px.bar(df_plot, x="Mes", y="Valor", color="Categoría",
+                         title=f"Comparativa {anio_sidebar} por mes")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Sin datos mensuales para el año seleccionado.")
 
 with tabs[1]:
     st.subheader(f"Tipo de movilidad — {year}")
