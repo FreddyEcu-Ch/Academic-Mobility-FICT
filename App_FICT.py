@@ -284,7 +284,7 @@ tab_titles = [
     ("🖥️", "Modalidad"),
     ("🧭", "Actividad"),
     ("🗺️", "Países"),
-    ("📋", "Funcionarios"),
+    ("📋", "Comunidad FICT"),
 ]
 tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
 
