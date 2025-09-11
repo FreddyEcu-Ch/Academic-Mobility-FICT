@@ -8,7 +8,6 @@ from PIL import Image
 from pathlib import Path
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-
 st.set_page_config(
     page_title="Movilidad Académica FICT",
     page_icon="🎓",
