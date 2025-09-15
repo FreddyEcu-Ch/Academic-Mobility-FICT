@@ -226,7 +226,7 @@ logo_fict = load_image_cached("Resources/LogoFICTverde.png")
 if logo_fict:
     st.image(logo_fict)
 else:
-    st.write("🌍 ✈️ Movilidad Académica FICT")
+    st.write("🌍 Movilidad Académica FICT")
 
 st.markdown(
     "<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>",
