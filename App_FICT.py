@@ -229,7 +229,7 @@ else:
     st.write("🌍 Movilidad Académica FICT")
 
 st.markdown(
-    "<h1 style='text-align:center;'>🎓 Movilidad Académica FICT — 2025</h1>",
+    "<h1 style='text-align:center;'>🌍 Movilidad Académica FICT — 2025</h1>",
     unsafe_allow_html=True,
 )
 st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
