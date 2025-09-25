@@ -45,7 +45,7 @@ def load_excel(src):
 
 def parse_comparativa(xls: pd.ExcelFile):
     df = pd.read_excel(xls, sheet_name="Comparativa 2022 - 2025")
-    blocks = [(3, 4, 5, "2023"), (8, 9, 10, "2024"), (13, 14, 15, "2025")]
+    blocks = [(1, 2, 3, "2022"), (6, 7, 8, "2023"), (11, 12, 13, "2024"), (16, 17, 18, "2025")]
     out = {lab: {} for *_, lab in blocks}
     for c_label, c_name, c_val, lab in blocks:
         current_block = None
@@ -87,6 +87,7 @@ def parse_countries(xls):
     """
     result = {}
     for sheet, year in [
+        ("Países 2022", "2022"),
         ("Países 2023", "2023"),
         ("Países 2024", "2024"),
         ("Países 2025", "2025"),
@@ -275,10 +276,10 @@ else:
 comp_dict, year_totals = parse_comparativa(xls)
 countries_dict = parse_countries(xls)
 
-year = st.sidebar.selectbox("Año", ["2023", "2024", "2025"], index=2)
+year = st.sidebar.selectbox("Año", ["2022", "2023", "2024", "2025"], index=3)
 
 tab_titles = [
-    ("📊", "Comparativa 2023–2025"),
+    ("📊", "Comparativa 2022–2025"),
     ("🔁", "Tipo de movilidad"),
     ("🎓", "Movilidades por carrera"),
     ("🖥️", "Modalidad"),
@@ -290,18 +291,19 @@ tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
 
 
 with tabs[0]:
-    st.subheader("Comparativa global 2023–2025")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total 2023", int(year_totals.get("2023", 0)))
-    c2.metric("Total 2024", int(year_totals.get("2024", 0)))
-    c3.metric("Total 2025", int(year_totals.get("2025", 0)))
+    st.subheader("Comparativa global 2022–2025")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total 2022", int(year_totals.get("2022", 0)))
+    c2.metric("Total 2023", int(year_totals.get("2023", 0)))
+    c3.metric("Total 2024", int(year_totals.get("2024", 0)))
+    c4.metric("Total 2025", int(year_totals.get("2025", 0)))
     for block in ["Tipo de movilidad", "Nivel", "Categoría", "Modalidad"]:
-        if not any(block in comp_dict[y] for y in ["2023", "2024", "2025"]):
+        if not any(block in comp_dict[y] for y in ["2022", "2023", "2024", "2025"]):
             continue
         df_blk = pd.concat(
             [
                 tidy_from_block(comp_dict, y, block)
-                for y in ["2023", "2024", "2025"]
+                for y in ["2022", "2023", "2024", "2025"]
                 if block in comp_dict[y]
             ],
             ignore_index=True,
@@ -311,7 +313,7 @@ with tabs[0]:
                 df_blk,
                 "Categoría",
                 "Valor",
-                f"{block} — Comparativa 2023–2025",
+                f"{block} — Comparativa 2022–2025",
                 color="Año",
             ),
             use_container_width=True,
@@ -588,7 +590,7 @@ with tabs[5]:
 df_relex = load_funcionarios()
 
 with tabs[6]:
-    año = st.radio("Seleccione el año", (2023, 2024, 2025))
+    año = st.radio("Seleccione el año", (2022, 2023, 2024, 2025))
     if año == 2025:
         st.subheader("📋 Registro RELEX 2025")
         df_relex = df_relex  # lee Data/Registros_Relex2025.xlsx
