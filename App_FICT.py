@@ -45,7 +45,12 @@ def load_excel(src):
 
 def parse_comparativa(xls: pd.ExcelFile):
     df = pd.read_excel(xls, sheet_name="Comparativa 2022 - 2025")
-    blocks = [(1, 2, 3, "2022"), (6, 7, 8, "2023"), (11, 12, 13, "2024"), (16, 17, 18, "2025")]
+    blocks = [
+        (1, 2, 3, "2022"),
+        (6, 7, 8, "2023"),
+        (11, 12, 13, "2024"),
+        (16, 17, 18, "2025"),
+    ]
     out = {lab: {} for *_, lab in blocks}
     for c_label, c_name, c_val, lab in blocks:
         current_block = None
