@@ -595,10 +595,10 @@ with tabs[5]:
 df_relex = load_funcionarios()
 
 with tabs[6]:
-    año = st.radio("Seleccione el año", (2022, 2023, 2024, 2025))
-    if año == 2025:
-        st.subheader("📋 Registro RELEX 2025")
-        df_relex = df_relex  # lee Data/Registros_Relex2025.xlsx
+    #tipo = st.radio("Escoja el tipo de movilidad", ("Entrante", "Saliente"))
+    #if tipo == "Saliente":
+    st.subheader("📋 Registro  RELEX 2025")
+    df_relex = df_relex  # lee Data/Registros_Relex2025.xlsx
 
     if df_relex.empty:
         st.info("No hay datos para mostrar o faltan columnas requeridas en el Excel.")
