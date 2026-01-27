@@ -454,27 +454,34 @@ with tabs[5]:
     df_pais = countries_dict.get(
         year, pd.DataFrame(columns=["País", "Tipo", "Modalidad", "Casos"])
     )
+
     if df_pais.empty:
         st.info("No se encontraron datos de países en el Excel para este año.")
     else:
-        # --- Filtros
-        tipo = st.radio("Tipo", ["Entrante", "Saliente"], horizontal=True)
-        map_type = st.radio(
-            "Tipo de mapa", ["Coroplético", "Burbujas"], horizontal=True
-        )
+        # --- Filtros principales
+        categoria = st.radio("Categoría", ["Todas", "Entrante", "Saliente"], horizontal=True)
+        map_type = st.radio("Tipo de mapa", ["Coroplético", "Burbujas"], horizontal=True)
 
-        # --- Prepara datos
-        df_t = df_pais[df_pais["Tipo"] == tipo].copy()
+        # --- Prepara datos base
+        df_t = df_pais.copy()
 
         # Quita filas de totales si existieran
         df_t = df_t[
-            ~df_t["País"].str.strip().str.lower().isin(["total", "totales", "subtotal"])
+            ~df_t["País"].astype(str).str.strip().str.lower().isin(["total", "totales", "subtotal"])
         ]
 
         # Asegura numérico
         df_t["Casos"] = pd.to_numeric(df_t["Casos"], errors="coerce").fillna(0)
 
-        # Map de nombres en ES -> EN (agrega/ajusta si te faltan países)
+        # Normaliza modalidad
+        df_t["Modalidad"] = df_t["Modalidad"].astype(str).str.strip()
+        df_t["Modalidad_norm"] = df_t["Modalidad"].str.lower()
+
+        # Filtra por categoría (si aplica)
+        if categoria != "Todas":
+            df_t = df_t[df_t["Tipo"] == categoria].copy()
+
+        # Map de nombres en ES -> EN (ajusta si te faltan países)
         name_map = {
             "España": "Spain",
             "Italia": "Italy",
@@ -513,109 +520,181 @@ with tabs[5]:
             "Sudáfrica": "South Africa",
             "Marruecos": "Morocco",
         }
+
         df_t["country_en"] = df_t["País"].replace(name_map)
-        # Si no está en el diccionario, deja el nombre original
         df_t["country_en"] = np.where(
-            df_t["country_en"].isna() | (df_t["country_en"].str.strip() == ""),
+            df_t["country_en"].isna() | (df_t["country_en"].astype(str).str.strip() == ""),
             df_t["País"],
             df_t["country_en"],
         )
 
-        # KPIs
-        c1, c2 = st.columns(2)
-        c1.metric(f"Países ({tipo})", df_t["country_en"].nunique())
-        c2.metric("Total casos", int(df_t["Casos"].sum()))
-
-        # --- Mapa
-        if map_type == "Coroplético":
+        # -----------------------------
+        # CASO 1: "Todas" (Entrantes+Salientes) e independiente de modalidad
+        # -----------------------------
+        if categoria == "Todas":
             df_geo = df_t.groupby("country_en", as_index=False)["Casos"].sum()
-            # Bubbles
-            # Choropleth
-            fig = px.choropleth(
-                df_geo,
-                locations="country_en",
-                locationmode="country names",
-                color="Casos",
-                color_continuous_scale="Blues",
-                projection="natural earth",
-                title=f"{tipo} — {year}",
-                hover_name="country_en",
-                labels={"Casos": "Casos"},
+
+            c1, c2 = st.columns(2)
+            c1.metric("Países (Todas)", int(df_geo["country_en"].nunique()))
+            c2.metric("Total casos", int(df_geo["Casos"].sum()))
+
+            st.divider()
+            st.markdown(f"### Todas las movilidades (Entrantes + Salientes) — {year}")
+
+            if df_geo.empty or df_geo["Casos"].sum() == 0:
+                st.info("Sin datos para 'Todas' las movilidades en este año.")
+            else:
+                if map_type == "Coroplético":
+                    fig = px.choropleth(
+                        df_geo,
+                        locations="country_en",
+                        locationmode="country names",
+                        color="Casos",
+                        color_continuous_scale="Blues",
+                        projection="natural earth",
+                        title=f"Todas las movilidades — {year}",
+                        hover_name="country_en",
+                        labels={"Casos": "Casos"},
+                    )
+                    fig.update_geos(
+                        showcountries=True,
+                        showcoastlines=True,
+                        showframe=False,
+                        countrycolor="black",
+                        countrywidth=0.5,
+                        coastlinecolor="gray",
+                    )
+                else:
+                    fig = px.scatter_geo(
+                        df_geo,
+                        locations="country_en",
+                        locationmode="country names",
+                        size="Casos",
+                        color="Casos",
+                        color_continuous_scale="Blues",
+                        projection="natural earth",
+                        title=f"Todas las movilidades — {year}",
+                        hover_name="country_en",
+                        labels={"Casos": "Casos"},
+                    )
+                    fig.update_traces(marker_line_color="black", marker_line_width=0.3, opacity=0.85)
+                    fig.update_geos(
+                        showcountries=True,
+                        showcoastlines=True,
+                        showframe=False,
+                        countrycolor="black",
+                        countrywidth=0.5,
+                        coastlinecolor="gray",
+                    )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+                st.altair_chart(
+                    bar(
+                        df_geo.sort_values("Casos", ascending=False),
+                        "country_en",
+                        "Casos",
+                        f"Ranking de países — Todas las movilidades ({year})",
+                        color="country_en",
+                    ),
+                    use_container_width=True,
+                )
+
+        # -----------------------------
+        # CASO 2: "Entrante" o "Saliente" (con selección de modalidad y mapa por modalidad)
+        # -----------------------------
+        else:
+            modalidad_candidates = df_t["Modalidad_norm"].dropna().unique().tolist()
+            orden_preferido = ["virtual", "presencial"]
+            modalidad_opts = [m for m in orden_preferido if m in modalidad_candidates] + [
+                m for m in sorted(modalidad_candidates) if m not in orden_preferido
+            ]
+
+            modalidad_sel = st.multiselect(
+                "Modalidad (elige una o varias)",
+                options=modalidad_opts,
+                default=modalidad_opts,
             )
-            fig.update_geos(
-                showcountries=True,  # draw country borders
-                showcoastlines=True,  # draw coastlines
-                showframe=False,  # no outer frame
-                countrycolor="black",  # optional styling
-                countrywidth=0.5,
-                coastlinecolor="gray",
-            )
 
-        else:  # Burbujas
-            df_geo = df_t.groupby("country_en", as_index=False)["Casos"].sum()
-            # Bubbles
-            fig = px.scatter_geo(
-                df_geo,
-                locations="country_en",
-                locationmode="country names",
-                size="Casos",
-                color="Casos",
-                color_continuous_scale="Blues",
-                projection="natural earth",
-                title=f"{tipo} — {year}",
-                hover_name="country_en",
-                labels={"Casos": "Casos"},
-            )
-            fig.update_traces(
-                marker_line_color="black", marker_line_width=0.3, opacity=0.85
-            )
-            fig.update_geos(
-                showcountries=True,
-                showcoastlines=True,
-                showframe=False,
-                countrycolor="black",
-                countrywidth=0.5,
-                coastlinecolor="gray",
-            )
+            if not modalidad_sel:
+                st.info("Selecciona al menos una modalidad para generar los mapas.")
+            else:
+                df_base = df_t[df_t["Modalidad_norm"].isin(modalidad_sel)].copy()
 
-        st.plotly_chart(fig, use_container_width=True)
+                c1, c2 = st.columns(2)
+                c1.metric(f"Países ({categoria})", int(df_base["country_en"].nunique()))
+                c2.metric("Total casos", int(df_base["Casos"].sum()))
 
-        # Ranking por país (barras coloreadas por país)
-        st.altair_chart(
-            bar(
-                df_geo.sort_values("Casos", ascending=False),
-                "country_en",
-                "Casos",
-                f"Ranking de países — {tipo} ({year})",
-                color="country_en",
-            ),
-            use_container_width=True,
-        )
+                st.divider()
 
-df_relex = load_funcionarios()
+                for mod in modalidad_sel:
+                    df_mod = df_t[df_t["Modalidad_norm"] == mod].copy()
 
-with tabs[6]:
-    #tipo = st.radio("Escoja el tipo de movilidad", ("Entrante", "Saliente"))
-    #if tipo == "Saliente":
-    st.subheader("📋 Registro  RELEX 2025")
-    df_relex = df_relex  # lee Data/Registros_Relex2025.xlsx
+                    if df_mod.empty or df_mod["Casos"].sum() == 0:
+                        st.info(f"Sin datos para {categoria} — {mod.capitalize()} ({year}).")
+                        continue
 
-    if df_relex.empty:
-        st.info("No hay datos para mostrar o faltan columnas requeridas en el Excel.")
-    else:
-        gb = GridOptionsBuilder.from_dataframe(df_relex)
-        gb.configure_pagination(paginationAutoPageSize=True)
-        gb.configure_default_column(editable=True, grouptable=True)
-        grid_options = gb.build()
-        AgGrid(df_relex, gridOptions=grid_options, theme="streamlit")
+                    st.markdown(f"### {categoria} — {mod.capitalize()} ({year})")
 
-        # Descarga opcional en CSV
-        st.download_button(
-            "⬇️ Descargar CSV",
-            df_relex.to_csv(index=False).encode("utf-8"),
-            file_name="Registro_RELEX_2025.csv",
-            mime="text/csv",
-        )
+                    df_geo = df_mod.groupby("country_en", as_index=False)["Casos"].sum()
+
+                    if map_type == "Coroplético":
+                        fig = px.choropleth(
+                            df_geo,
+                            locations="country_en",
+                            locationmode="country names",
+                            color="Casos",
+                            color_continuous_scale="Blues",
+                            projection="natural earth",
+                            title=f"{categoria} — {mod.capitalize()} — {year}",
+                            hover_name="country_en",
+                            labels={"Casos": "Casos"},
+                        )
+                        fig.update_geos(
+                            showcountries=True,
+                            showcoastlines=True,
+                            showframe=False,
+                            countrycolor="black",
+                            countrywidth=0.5,
+                            coastlinecolor="gray",
+                        )
+                    else:
+                        fig = px.scatter_geo(
+                            df_geo,
+                            locations="country_en",
+                            locationmode="country names",
+                            size="Casos",
+                            color="Casos",
+                            color_continuous_scale="Blues",
+                            projection="natural earth",
+                            title=f"{categoria} — {mod.capitalize()} — {year}",
+                            hover_name="country_en",
+                            labels={"Casos": "Casos"},
+                        )
+                        fig.update_traces(marker_line_color="black", marker_line_width=0.3, opacity=0.85)
+                        fig.update_geos(
+                            showcountries=True,
+                            showcoastlines=True,
+                            showframe=False,
+                            countrycolor="black",
+                            countrywidth=0.5,
+                            coastlinecolor="gray",
+                        )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    st.altair_chart(
+                        bar(
+                            df_geo.sort_values("Casos", ascending=False),
+                            "country_en",
+                            "Casos",
+                            f"Ranking de países — {categoria} — {mod.capitalize()} ({year})",
+                            color="country_en",
+                        ),
+                        use_container_width=True,
+                    )
+
+                    st.divider()
 
 
 st.divider()
