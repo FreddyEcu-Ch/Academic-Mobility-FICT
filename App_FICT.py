@@ -698,4 +698,4 @@ with tabs[5]:
 
 
 st.divider()
-st.caption("© FICT — ESPOL | Enero 2026")
+st.caption("© FICT — ESPOL | Junio 2026")
