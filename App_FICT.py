@@ -6,7 +6,7 @@ import altair as alt
 import plotly.express as px
 from PIL import Image
 from pathlib import Path
-from funciones_2026 import agregar_2026_desde_excel
+from funciones_2026 import agregar_2026_desde_excel, obtener_resumen_petroleos_2026
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(
@@ -391,12 +391,18 @@ with tabs[2]:
         df_carr = tidy_from_block(comp_dict, year, "Carreras y Programas").sort_values(
             "Valor", ascending=False
         )
+
         topn = st.slider(
-            "Mostrar top N carreras", 5, len(df_carr), min(10, len(df_carr))
+            "Mostrar top N carreras",
+            5,
+            len(df_carr),
+            min(10, len(df_carr))
         )
+
         col1, col2 = st.columns(2)
         col1.metric("Carreras con >0", int((df_carr["Valor"] > 0).sum()))
         col2.metric("Total", int(df_carr["Valor"].sum()))
+
         st.altair_chart(
             bar(
                 df_carr.head(topn),
@@ -407,6 +413,39 @@ with tabs[2]:
             ),
             use_container_width=True,
         )
+
+        # ----- Gráficos adicionales para Petróleos en 2026 -----
+        if year == "2026":
+            st.markdown("---")
+            st.subheader("Detalle de la carrera de Petróleos — 2026")
+
+            df_pet_tipo, df_pet_rol = obtener_resumen_petroleos_2026()
+
+            g1, g2 = st.columns(2)
+
+            with g1:
+                st.altair_chart(
+                    bar(
+                        df_pet_tipo,
+                        "Categoría",
+                        "Valor",
+                        "Petróleos: movilidades entrantes y salientes",
+                        color="Categoría",
+                    ),
+                    use_container_width=True,
+                )
+
+            with g2:
+                st.altair_chart(
+                    bar(
+                        df_pet_rol,
+                        "Categoría",
+                        "Valor",
+                        "Petróleos: distribución entre estudiantes y profesores",
+                        color="Categoría",
+                    ),
+                    use_container_width=True,
+                )
 
     else:
         st.info("No hay datos de carreras para este año.")
