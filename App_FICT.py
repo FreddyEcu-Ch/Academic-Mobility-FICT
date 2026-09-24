@@ -6,6 +6,7 @@ import altair as alt
 import plotly.express as px
 from PIL import Image
 from pathlib import Path
+from funciones_2026 import agregar_2026_desde_excel
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(
@@ -235,7 +236,7 @@ else:
     st.write("🌍 Movilidad Académica FICT")
 
 st.markdown(
-    "<h1 style='text-align:center;'>🌍 Movilidad Académica FICT — 2025</h1>",
+    "<h1 style='text-align:center;'>🌍 Movilidad Académica FICT — 2026</h1>",
     unsafe_allow_html=True,
 )
 st.caption("**Fuente:** Coordinación de Movilidad Académica FICT.")
@@ -281,10 +282,22 @@ else:
 comp_dict, year_totals = parse_comparativa(xls)
 countries_dict = parse_countries(xls)
 
-year = st.sidebar.selectbox("Año", ["2022", "2023", "2024", "2025"], index=3)
+# Incorporar las estadísticas de movilidad 2026
+comp_dict, year_totals, countries_dict = agregar_2026_desde_excel(
+    comp_dict,
+    year_totals,
+    countries_dict
+)
+
+
+year = st.sidebar.selectbox(
+    "Año",
+    ["2022", "2023", "2024", "2025", "2026"],
+    index=4
+)
 
 tab_titles = [
-    ("📊", "Comparativa 2022–2025"),
+    ("📊", "Comparativa 2022–2026"),
     ("🔁", "Tipo de movilidad"),
     ("🎓", "Movilidades por carrera"),
     ("🖥️", "Modalidad"),
@@ -296,29 +309,50 @@ tabs = st.tabs([f"{ico} {title}" for ico, title in tab_titles])
 
 
 with tabs[0]:
-    st.subheader("Comparativa global 2022–2025")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total 2022", int(year_totals.get("2022", 0)))
-    c2.metric("Total 2023", int(year_totals.get("2023", 0)))
-    c3.metric("Total 2024", int(year_totals.get("2024", 0)))
-    c4.metric("Total 2025", int(year_totals.get("2025", 0)))
-    for block in ["Tipo de movilidad", "Nivel", "Categoría", "Modalidad"]:
-        if not any(block in comp_dict[y] for y in ["2022", "2023", "2024", "2025"]):
+
+    st.subheader("Comparativa global 2022–2026")
+
+    # Años disponibles para la comparativa
+    anios = ["2022", "2023", "2024", "2025", "2026"]
+
+    # Indicadores de movilidad por año
+    columnas = st.columns(5)
+
+    for columna, anio in zip(columnas, anios):
+        columna.metric(
+            f"Total {anio}",
+            int(year_totals.get(anio, 0))
+        )
+
+    # Gráficos comparativos
+    for block in [
+        "Tipo de movilidad",
+        "Nivel",
+        "Categoría",
+        "Modalidad"
+    ]:
+
+        if not any(
+            block in comp_dict[anio]
+            for anio in anios
+        ):
             continue
+
         df_blk = pd.concat(
             [
-                tidy_from_block(comp_dict, y, block)
-                for y in ["2022", "2023", "2024", "2025"]
-                if block in comp_dict[y]
+                tidy_from_block(comp_dict, anio, block)
+                for anio in anios
+                if block in comp_dict[anio]
             ],
             ignore_index=True,
         )
+
         st.altair_chart(
             bar(
                 df_blk,
                 "Categoría",
                 "Valor",
-                f"{block} — Comparativa 2022–2025",
+                f"{block} — Comparativa 2022–2026",
                 color="Año",
             ),
             use_container_width=True,
@@ -698,4 +732,4 @@ with tabs[5]:
 
 
 st.divider()
-st.caption("© FICT — ESPOL | Julio 2026")
+st.caption("© FICT — ESPOL | Septiembre 2026")
