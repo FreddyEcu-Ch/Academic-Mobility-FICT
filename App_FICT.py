@@ -6,7 +6,7 @@ import altair as alt
 import plotly.express as px
 from PIL import Image
 from pathlib import Path
-from funciones_2026 import agregar_2026_desde_excel, obtener_resumen_petroleos_2026
+from funciones_2026 import agregar_2026_desde_excel, cargar_detalle_carreras_2026
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(
@@ -385,23 +385,45 @@ with tabs[1]:
     else:
         st.info("No hay datos de Tipo de movilidad para este año.")
 
-with tabs[2]:
-    st.subheader(f"Movilidades por carrera — {year}")
-    if "Carreras y Programas" in comp_dict[year]:
-        df_carr = tidy_from_block(comp_dict, year, "Carreras y Programas").sort_values(
-            "Valor", ascending=False
-        )
 
-        topn = st.slider(
-            "Mostrar top N carreras",
-            5,
-            len(df_carr),
-            min(10, len(df_carr))
+with tabs[2]:
+
+    st.subheader(f"Movilidades por carrera — {year}")
+
+    if "Carreras y Programas" in comp_dict[year]:
+
+        # ==========================================
+        # GRÁFICO GENERAL DE CARRERAS
+        # ==========================================
+
+        df_carr = tidy_from_block(
+            comp_dict,
+            year,
+            "Carreras y Programas"
+        ).sort_values("Valor", ascending=False)
+
+        topn = (
+            len(df_carr)
+            if len(df_carr) <= 5
+            else st.slider(
+                "Mostrar top N carreras",
+                5,
+                len(df_carr),
+                min(10, len(df_carr))
+            )
         )
 
         col1, col2 = st.columns(2)
-        col1.metric("Carreras con >0", int((df_carr["Valor"] > 0).sum()))
-        col2.metric("Total", int(df_carr["Valor"].sum()))
+
+        col1.metric(
+            "Carreras con >0",
+            int((df_carr["Valor"] > 0).sum())
+        )
+
+        col2.metric(
+            "Total",
+            int(df_carr["Valor"].sum())
+        )
 
         st.altair_chart(
             bar(
@@ -414,41 +436,264 @@ with tabs[2]:
             use_container_width=True,
         )
 
-        # ----- Gráficos adicionales para Petróleos en 2026 -----
+        # ==========================================
+        # ESTADÍSTICAS POR CARRERA - AÑO 2026
+        # ==========================================
+
         if year == "2026":
+
             st.markdown("---")
-            st.subheader("Detalle de la carrera de Petróleos — 2026")
 
-            df_pet_tipo, df_pet_rol = obtener_resumen_petroleos_2026()
+            st.subheader(
+                "Detalle de movilidad por carrera — 2026"
+            )
 
-            g1, g2 = st.columns(2)
+            # Cargar los registros del Excel de 2026
+            datos_carreras = cargar_detalle_carreras_2026()
 
-            with g1:
-                st.altair_chart(
-                    bar(
-                        df_pet_tipo,
-                        "Categoría",
-                        "Valor",
-                        "Petróleos: movilidades entrantes y salientes",
-                        color="Categoría",
-                    ),
-                    use_container_width=True,
+            # Obtener todas las carreras disponibles
+            carreras = sorted(
+                datos_carreras["Carrera"].unique(),
+                key=str.casefold
+            )
+
+            # Selector de carrera
+            carrera = st.selectbox(
+                "Selecciona la carrera o programa",
+                carreras,
+                index=(
+                    carreras.index("Petróleos")
+                    if "Petróleos" in carreras
+                    else 0
+                ),
+                key="detalle_carrera_fict_2026"
+            )
+
+            # Filtrar los registros de la carrera elegida
+            seleccion = datos_carreras[
+                datos_carreras["Carrera"] == carrera
+            ].copy()
+
+            # ==========================================
+            # INDICADORES GENERALES
+            # ==========================================
+
+            entrantes = (
+                seleccion["Tipo"] == "Entrante"
+            ).sum()
+
+            salientes = (
+                seleccion["Tipo"] == "Saliente"
+            ).sum()
+
+            virtuales = (
+                seleccion["Modalidad"] == "Virtual"
+            ).sum()
+
+            presenciales = (
+                seleccion["Modalidad"] == "Presencial"
+            ).sum()
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+
+            c1.metric(
+                "Total",
+                len(seleccion)
+            )
+
+            c2.metric(
+                "Entrantes",
+                int(entrantes)
+            )
+
+            c3.metric(
+                "Salientes",
+                int(salientes)
+            )
+
+            c4.metric(
+                "Virtuales",
+                int(virtuales)
+            )
+
+            c5.metric(
+                "Presenciales",
+                int(presenciales)
+            )
+
+            st.markdown("---")
+
+            # ==========================================
+            # FUNCIÓN AUXILIAR PARA LOS CINCO GRÁFICOS
+            # ==========================================
+
+            def mostrar_grafico_carrera(
+                campo,
+                titulo,
+                categorias=None,
+                horizontal=False
+            ):
+
+                # Contar participaciones por categoría
+                conteos = seleccion[campo].value_counts()
+
+                # Mantener un orden fijo cuando corresponda
+                if categorias is not None:
+
+                    otras = [
+                        c for c in conteos.index
+                        if c not in categorias
+                    ]
+
+                    conteos = conteos.reindex(
+                        categorias + otras,
+                        fill_value=0
+                    )
+
+                resumen = (
+                    conteos
+                    .rename_axis("Categoría")
+                    .reset_index(name="Valor")
                 )
 
-            with g2:
-                st.altair_chart(
-                    bar(
-                        df_pet_rol,
+                if horizontal:
+
+                    # Barras horizontales para nombres largos
+                    grafico = (
+                        alt.Chart(resumen)
+                        .mark_bar()
+                        .encode(
+                            x=alt.X(
+                                "Valor:Q",
+                                title="Total"
+                            ),
+                            y=alt.Y(
+                                "Categoría:N",
+                                sort="-x",
+                                title="",
+                                axis=alt.Axis(
+                                    labelLimit=350
+                                )
+                            ),
+                            color=alt.Color(
+                                "Categoría:N",
+                                legend=None,
+                                scale=alt.Scale(
+                                    scheme="tableau10"
+                                )
+                            ),
+                            tooltip=[
+                                "Categoría:N",
+                                "Valor:Q"
+                            ]
+                        )
+                        .properties(
+                            height=max(
+                                300,
+                                35 * len(resumen)
+                            ),
+                            title=titulo
+                        )
+                    )
+
+                else:
+
+                    # Barras verticales con el diseño existente
+                    grafico = bar(
+                        resumen,
                         "Categoría",
                         "Valor",
-                        "Petróleos: distribución entre estudiantes y profesores",
-                        color="Categoría",
-                    ),
-                    use_container_width=True,
+                        titulo,
+                        color="Categoría"
+                    )
+
+                st.altair_chart(
+                    grafico,
+                    use_container_width=True
                 )
+
+            # ==========================================
+            # GRÁFICO 1: ENTRANTES Y SALIENTES
+            # GRÁFICO 2: ESTUDIANTES Y PROFESORES
+            # ==========================================
+
+            izquierda, derecha = st.columns(2)
+
+            with izquierda:
+
+                mostrar_grafico_carrera(
+                    "Tipo",
+                    f"Movilidades entrantes y salientes — {carrera}",
+                    categorias=[
+                        "Entrante",
+                        "Saliente"
+                    ]
+                )
+
+            with derecha:
+
+                mostrar_grafico_carrera(
+                    "Grupo",
+                    f"Distribución por rol — {carrera}",
+                    categorias=[
+                        "Estudiantes",
+                        "Profesores"
+                    ]
+                )
+
+            # ==========================================
+            # GRÁFICO 3: MODALIDAD
+            # ==========================================
+
+            st.markdown("---")
+
+            mostrar_grafico_carrera(
+                "Modalidad",
+                f"Modalidad de movilidad — {carrera}",
+                categorias=[
+                    "Virtual",
+                    "Presencial"
+                ]
+            )
+
+            # ==========================================
+            # GRÁFICO 4: ACTIVIDADES REALIZADAS
+            # ==========================================
+
+            st.markdown("---")
+
+            mostrar_grafico_carrera(
+                "Actividad",
+                f"Actividades académicas realizadas — {carrera}",
+                horizontal=True
+            )
+
+            # ==========================================
+            # GRÁFICO 5: PAÍSES DE MOVILIDAD
+            # ==========================================
+
+            st.markdown("---")
+
+            mostrar_grafico_carrera(
+                "País",
+                f"Países de movilidad — {carrera}",
+                horizontal=True
+            )
+
+            st.caption(
+                "Fuente: Registros de movilidad FICT 2026. "
+                "Los valores corresponden a participaciones "
+                "registradas, no necesariamente a personas distintas. "
+                "La categoría Otros roles incluye personal "
+                "administrativo cuando corresponda."
+            )
 
     else:
-        st.info("No hay datos de carreras para este año.")
+
+        st.info(
+            "No hay datos de carreras para este año."
+        )
+
 
 with tabs[3]:
     st.subheader(f"Modalidad — {year}")

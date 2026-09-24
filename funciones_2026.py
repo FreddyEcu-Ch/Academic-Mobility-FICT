@@ -95,107 +95,64 @@ def agregar_2026_desde_excel(comp_dict, year_totals, countries_dict):
     )
     return comp_dict, year_totals, countries_dict
 
-def obtener_resumen_petroleos_2026():
-    """
-    Devuelve dos dataframes para graficar:
-    1) Movilidades entrantes vs salientes de Petróleos
-    2) Distribución entre estudiantes y profesores de Petróleos
+
+def cargar_detalle_carreras_2026():
+    """Devuelve los registros públicos de 2026 para graficar cualquier carrera.
+
+    Cada fila es una participación, no necesariamente una persona diferente.
+    Utiliza el MISMO Excel que agregar_2026_desde_excel().
     """
     ruta = (
         Path(__file__).resolve().parent
         / "Data"
         / "Movilidad_FICT_2026_Carreras_Completas.xlsx"
     )
-
+    requeridas = [
+        "Carrera/Programa en ESPOL",
+        "Rol en ESPOL",
+        "Modalidad",
+        "Actividad desarrollada",
+        "País",
+    ]
     partes = []
 
-    for hoja, tipo_movilidad in (
-        ("Entrantes", "Movilidad Entrante"),
-        ("Salientes", "Movilidad Saliente"),
-    ):
+    for hoja, tipo in (("Entrantes", "Entrante"), ("Salientes", "Saliente")):
         df = pd.read_excel(ruta, sheet_name=hoja)
-
-        columnas_necesarias = ["Rol en ESPOL", "Carrera/Programa en ESPOL"]
-        faltantes = [c for c in columnas_necesarias if c not in df.columns]
+        faltantes = [col for col in requeridas if col not in df.columns]
         if faltantes:
-            raise ValueError(
-                f"En la hoja '{hoja}' faltan las columnas: {faltantes}"
-            )
+            raise ValueError(f"Hoja '{hoja}': faltan columnas {faltantes}")
 
-        df = df.copy()
-        df["Rol en ESPOL"] = df["Rol en ESPOL"].fillna("").astype(str).str.strip()
-        df["Carrera/Programa en ESPOL"] = (
-            df["Carrera/Programa en ESPOL"]
-            .fillna("")
-            .astype(str)
-            .str.strip()
+        df = df[requeridas].dropna(how="all").copy()
+        for col in requeridas:
+            df[col] = df[col].fillna("").astype(str).str.strip()
+
+        if df["Carrera/Programa en ESPOL"].eq("").any():
+            raise ValueError(f"Hoja '{hoja}': existen registros sin carrera.")
+
+        df["Carrera"] = df["Carrera/Programa en ESPOL"].replace(
+            {"Ingeniería civil": "Ingeniería Civil"}
+        )
+        df["Tipo"] = tipo
+
+        # Conservar todas las participaciones: administrativas aparecen en Otros roles.
+        rol = df["Rol en ESPOL"].str.casefold()
+        df["Grupo"] = "Otros roles"
+        df.loc[rol.str.contains("estudiante", regex=False), "Grupo"] = "Estudiantes"
+        df.loc[
+            rol.str.contains("académico|academico|docente|investigador|profesor", regex=True),
+            "Grupo",
+        ] = "Profesores"
+
+        df["Modalidad"] = df["Modalidad"].str.capitalize().replace(
+            {"": "Sin información"}
+        )
+        df["Actividad"] = df["Actividad desarrollada"].replace(
+            {"": "Sin información"}
+        )
+        df["País"] = df["País"].str.title().replace(
+            {"Peru": "Perú", "Mexico": "México", "Panama": "Panamá", "": "Sin información"}
         )
 
-        df = df[
-            df["Carrera/Programa en ESPOL"].str.casefold()
-            == "Petróleos".casefold()
-        ].copy()
+        partes.append(df[["Carrera", "Tipo", "Grupo", "Modalidad", "Actividad", "País"]])
 
-        df["Tipo"] = tipo_movilidad
-        partes.append(df)
-
-    if not partes:
-        return (
-            pd.DataFrame(columns=["Categoría", "Valor"]),
-            pd.DataFrame(columns=["Categoría", "Valor"]),
-        )
-
-    petro = pd.concat(partes, ignore_index=True)
-
-    # -------- Gráfico 1: Entrantes vs Salientes --------
-    df_tipo = (
-        petro["Tipo"]
-        .value_counts()
-        .rename_axis("Categoría")
-        .reset_index(name="Valor")
-    )
-
-    orden_tipo = ["Movilidad Entrante", "Movilidad Saliente"]
-    df_tipo["Categoría"] = pd.Categorical(
-        df_tipo["Categoría"],
-        categories=orden_tipo,
-        ordered=True,
-    )
-    df_tipo = df_tipo.sort_values("Categoría").reset_index(drop=True)
-
-    # -------- Gráfico 2: Estudiantes vs Profesores --------
-    def clasificar_rol(rol):
-        rol = str(rol).strip().lower()
-
-        if "estudiante" in rol:
-            return "Estudiantes"
-
-        if (
-            "académico" in rol
-            or "academico" in rol
-            or "docente" in rol
-            or "investigador" in rol
-            or "profesor" in rol
-        ):
-            return "Profesores"
-
-        return "Otros"
-
-    petro["Grupo"] = petro["Rol en ESPOL"].apply(clasificar_rol)
-
-    df_rol = (
-        petro[petro["Grupo"].isin(["Estudiantes", "Profesores"])]["Grupo"]
-        .value_counts()
-        .rename_axis("Categoría")
-        .reset_index(name="Valor")
-    )
-
-    orden_rol = ["Estudiantes", "Profesores"]
-    df_rol["Categoría"] = pd.Categorical(
-        df_rol["Categoría"],
-        categories=orden_rol,
-        ordered=True,
-    )
-    df_rol = df_rol.sort_values("Categoría").reset_index(drop=True)
-
-    return df_tipo, df_rol
+    return pd.concat(partes, ignore_index=True)
